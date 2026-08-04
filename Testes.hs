@@ -12,7 +12,6 @@ import Main
   , removerPorIndice
   )
 import System.Exit (exitFailure, exitSuccess)
-import System.IO (hSetEncoding, stdout, utf8)
 
 -- Estrutura simples de teste: nome do caso + resultado esperado vs obtido
 data Teste = Teste { nomeTeste :: String, passou :: Bool, detalhe :: String }
@@ -22,7 +21,7 @@ testar nome esperado obtido =
   Teste nome (esperado == obtido)
     ("esperado: " ++ show esperado ++ " | obtido: " ++ show obtido)
 
--- Dados de exemplo usados em vários testes
+-- Dados de exemplo usados em varios testes
 receita1 :: Transacao
 receita1 = Transacao { categoria = Alimentacao, tipo = Receita, valor = 1500 }
 
@@ -46,7 +45,7 @@ testeTransacaoParaResumoDespesa =
     (ResumoFinanceiro 0 300 (-300))
     (transacaoParaResumo despesa1)
 
--- ===== Testes de calcularResumo (usa a instância de Monoid) =====
+-- ===== Testes de calcularResumo (usa a instancia de Monoid) =====
 
 testeCalcularResumoListaVazia :: Teste
 testeCalcularResumoListaVazia =
@@ -66,7 +65,7 @@ testeCalcularResumoApenasDespesas =
     (ResumoFinanceiro 0 400 (-400))
     (calcularResumo [despesa1, despesa2])
 
--- Propriedade de Monoid: mempty é elemento neutro de (<>)
+-- Propriedade de Monoid: mempty e elemento neutro de (<>)
 testeMonoidIdentidadeEsquerda :: Teste
 testeMonoidIdentidadeEsquerda =
   testar "Monoid: mempty <> r == r"
@@ -87,7 +86,7 @@ testeMonoidAssociatividade =
     (calcularResumo [receita1, despesa1, despesa2])
     (calcularResumo [receita1] <> calcularResumo [despesa1, despesa2])
 
--- ===== Testes de removerPorIndice (recursão) =====
+-- ===== Testes de removerPorIndice (recursao) =====
 
 testeRemoverPrimeiro :: Teste
 testeRemoverPrimeiro =
@@ -103,19 +102,19 @@ testeRemoverMeio =
 
 testeRemoverUltimo :: Teste
 testeRemoverUltimo =
-  testar "removerPorIndice 3 (remove o último)"
+  testar "removerPorIndice 3 (remove o ultimo)"
     [receita1, despesa1]
     (removerPorIndice 3 [receita1, despesa1, despesa2])
 
 testeRemoverIndiceInvalidoZero :: Teste
 testeRemoverIndiceInvalidoZero =
-  testar "removerPorIndice 0 (índice inválido, lista inalterada)"
+  testar "removerPorIndice 0 (indice invalido, lista inalterada)"
     [receita1, despesa1]
     (removerPorIndice 0 [receita1, despesa1])
 
 testeRemoverIndiceForaDoIntervalo :: Teste
 testeRemoverIndiceForaDoIntervalo =
-  testar "removerPorIndice 10 (índice além do tamanho, lista inalterada)"
+  testar "removerPorIndice 10 (indice alem do tamanho, lista inalterada)"
     [receita1, despesa1]
     (removerPorIndice 10 [receita1, despesa1])
 
@@ -135,7 +134,7 @@ testeFormatarTransacoesVazia =
 
 testeFormatarTransacoesConteudo :: Teste
 testeFormatarTransacoesConteudo =
-  testar "formatarTransacoes (contém categoria e tipo formatados)"
+  testar "formatarTransacoes (contem categoria e tipo formatados)"
     True
     (let linhas = formatarTransacoes [receita1]
      in length linhas == 1
@@ -160,11 +159,11 @@ testeTodasCategoriasTamanho =
 
 testeTodasCategoriasContemOutros :: Teste
 testeTodasCategoriasContemOutros =
-  testar "todasCategorias contém Outros"
+  testar "todasCategorias contem Outros"
     True
     (Outros `elem` todasCategorias)
 
--- ===== Execução dos testes =====
+-- ===== Execucao dos testes =====
 
 todosOsTestes :: [Teste]
 todosOsTestes =
@@ -190,8 +189,7 @@ todosOsTestes =
 
 main :: IO ()
 main = do
-  hSetEncoding stdout utf8
-  putStrLn "===== Executando testes unitários ====="
+  putStrLn "===== Executando testes unitarios ====="
   resultados <- mapM executarTeste todosOsTestes
   let totalTestes = length resultados
       totalFalhas = length (filter not resultados)
