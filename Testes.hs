@@ -1,7 +1,6 @@
-module Testes (main) where
-
-import Main
-  ( Categoria(..)
+module Main
+  ( main
+  , Categoria(..)
   , TipoTransacao(..)
   , Transacao(..)
   , ResumoFinanceiro(..)
@@ -10,198 +9,195 @@ import Main
   , calcularResumo
   , formatarTransacoes
   , removerPorIndice
-  )
-import System.Exit (exitFailure, exitSuccess)
+  ) where
 
--- Estrutura simples de teste: nome do caso + resultado esperado vs obtido
-data Teste = Teste { nomeTeste :: String, passou :: Bool, detalhe :: String }
+import Text.Read (readMaybe)
+import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 
-testar :: (Eq a, Show a) => String -> a -> a -> Teste
-testar nome esperado obtido =
-  Teste nome (esperado == obtido)
-    ("esperado: " ++ show esperado ++ " | obtido: " ++ show obtido)
+data Categoria =
+  Alimentacao |
+  Transporte  |
+  Saude       |
+  Lazer       |
+  Educacao    |
+  Moradia     |
+  Vestuario   |
+  Outros      deriving (Show, Eq, Enum, Bounded)
 
--- Dados de exemplo usados em varios testes
-receita1 :: Transacao
-receita1 = Transacao { categoria = Alimentacao, tipo = Receita, valor = 1500 }
+data TipoTransacao =
+  Receita |
+  Despesa deriving (Show, Eq)
 
-despesa1 :: Transacao
-despesa1 = Transacao { categoria = Transporte, tipo = Despesa, valor = 300 }
+data Transacao = Transacao {
+  categoria :: Categoria,
+  tipo      :: TipoTransacao,
+  valor     :: Double
+} deriving (Show, Eq)
 
-despesa2 :: Transacao
-despesa2 = Transacao { categoria = Lazer, tipo = Despesa, valor = 100 }
+data ResumoFinanceiro = ResumoFinanceiro {
+  totalReceitas :: Double,
+  totalDespesas :: Double,
+  saldo         :: Double
+} deriving (Show, Eq)
 
--- ===== Testes de transacaoParaResumo =====
+-- Instanciacao de Monoid (bonus): combinar dois resumos parciais soma os campos
+instance Semigroup ResumoFinanceiro where
+  (ResumoFinanceiro r1 d1 s1) <> (ResumoFinanceiro r2 d2 s2) =
+    ResumoFinanceiro (r1 + r2) (d1 + d2) (s1 + s2)
 
-testeTransacaoParaResumoReceita :: Teste
-testeTransacaoParaResumoReceita =
-  testar "transacaoParaResumo (Receita)"
-    (ResumoFinanceiro 1500 0 1500)
-    (transacaoParaResumo receita1)
+instance Monoid ResumoFinanceiro where
+  mempty = ResumoFinanceiro 0 0 0
 
-testeTransacaoParaResumoDespesa :: Teste
-testeTransacaoParaResumoDespesa =
-  testar "transacaoParaResumo (Despesa)"
-    (ResumoFinanceiro 0 300 (-300))
-    (transacaoParaResumo despesa1)
+-- Todas as categorias possiveis (Enum/Bounded)
+todasCategorias :: [Categoria]
+todasCategorias = [minBound .. maxBound]
 
--- ===== Testes de calcularResumo (usa a instancia de Monoid) =====
+-- Converte uma transacao individual em um "resumo parcial"
+transacaoParaResumo :: Transacao -> ResumoFinanceiro
+transacaoParaResumo t = case tipo t of
+  Receita -> ResumoFinanceiro (valor t) 0 (valor t)
+  Despesa -> ResumoFinanceiro 0 (valor t) (negate (valor t))
 
-testeCalcularResumoListaVazia :: Teste
-testeCalcularResumoListaVazia =
-  testar "calcularResumo (lista vazia == mempty)"
-    (ResumoFinanceiro 0 0 0)
-    (calcularResumo [])
+-- Calcula o resumo financeiro combinando todas as transacoes via Monoid (foldMap)
+calcularResumo :: [Transacao] -> ResumoFinanceiro
+calcularResumo = foldMap transacaoParaResumo
 
-testeCalcularResumoMisto :: Teste
-testeCalcularResumoMisto =
-  testar "calcularResumo (receitas e despesas combinadas)"
-    (ResumoFinanceiro 1500 400 1100)
-    (calcularResumo [receita1, despesa1, despesa2])
+-- Formata as transacoes com indice (1-based) para exibicao -- list comprehension
+formatarTransacoes :: [Transacao] -> [String]
+formatarTransacoes transacoes =
+  [ show i ++ " - " ++ show (tipo t) ++ " | " ++ show (categoria t) ++
+    " | R$ " ++ show (valor t)
+  | (i, t) <- zip [1 :: Int ..] transacoes ]
 
-testeCalcularResumoApenasDespesas :: Teste
-testeCalcularResumoApenasDespesas =
-  testar "calcularResumo (somente despesas -> saldo negativo)"
-    (ResumoFinanceiro 0 400 (-400))
-    (calcularResumo [despesa1, despesa2])
+-- Remove o elemento de indice (1-based) via recursao explicita (tail recursion)
+removerPorIndice :: Int -> [Transacao] -> [Transacao]
+removerPorIndice _ [] = []
+removerPorIndice indice (t:ts)
+  | indice == 1 = ts
+  | indice < 1  = t : ts
+  | otherwise   = t : removerPorIndice (indice - 1) ts
 
--- Propriedade de Monoid: mempty e elemento neutro de (<>)
-testeMonoidIdentidadeEsquerda :: Teste
-testeMonoidIdentidadeEsquerda =
-  testar "Monoid: mempty <> r == r"
-    (calcularResumo [receita1])
-    (mempty <> calcularResumo [receita1])
+-- Imprime cada linha da lista, uma por vez, percorrendo recursivamente
+imprimirLinhas :: [String] -> IO ()
+imprimirLinhas [] = return ()
+imprimirLinhas (linha:resto) = do
+  putStrLn linha
+  imprimirLinhas resto
 
-testeMonoidIdentidadeDireita :: Teste
-testeMonoidIdentidadeDireita =
-  testar "Monoid: r <> mempty == r"
-    (calcularResumo [receita1])
-    (calcularResumo [receita1] <> mempty)
+listarTransacoes :: [Transacao] -> IO ()
+listarTransacoes [] = putStrLn "Nenhuma transacao cadastrada."
+listarTransacoes transacoes = imprimirLinhas (formatarTransacoes transacoes)
 
--- Propriedade: dividir a lista em duas partes e combinar os resumos
--- deve dar o mesmo resultado que calcular o resumo da lista inteira
-testeMonoidAssociatividade :: Teste
-testeMonoidAssociatividade =
-  testar "Monoid: resumo(parte1) <> resumo(parte2) == resumo(tudo)"
-    (calcularResumo [receita1, despesa1, despesa2])
-    (calcularResumo [receita1] <> calcularResumo [despesa1, despesa2])
+-- Exibe cada categoria numerada, percorrendo a lista recursivamente
+exibirCategoriasNumeradas :: [(Int, Categoria)] -> IO ()
+exibirCategoriasNumeradas [] = return ()
+exibirCategoriasNumeradas ((indice, cat):resto) = do
+  putStrLn (show indice ++ " - " ++ show cat)
+  exibirCategoriasNumeradas resto
 
--- ===== Testes de removerPorIndice (recursao) =====
+lerCategoria :: IO Categoria
+lerCategoria = do
+  putStrLn "Categorias disponiveis:"
+  exibirCategoriasNumeradas (zip [1 :: Int ..] todasCategorias)
+  putStr "Escolha o numero da categoria: "
+  entrada <- getLine
+  case readMaybe entrada :: Maybe Int of
+    Just n | n >= 1 && n <= length todasCategorias -> return (todasCategorias !! (n - 1))
+    _ -> do
+      putStrLn "Opcao invalida, tente novamente."
+      lerCategoria
 
-testeRemoverPrimeiro :: Teste
-testeRemoverPrimeiro =
-  testar "removerPorIndice 1 (remove o primeiro)"
-    [despesa1, despesa2]
-    (removerPorIndice 1 [receita1, despesa1, despesa2])
+lerTipoTransacao :: IO TipoTransacao
+lerTipoTransacao = do
+  putStrLn "1 - Receita"
+  putStrLn "2 - Despesa"
+  putStr "Escolha o tipo: "
+  entrada <- getLine
+  case entrada of
+    "1" -> return Receita
+    "2" -> return Despesa
+    _   -> do
+      putStrLn "Opcao invalida, tente novamente."
+      lerTipoTransacao
 
-testeRemoverMeio :: Teste
-testeRemoverMeio =
-  testar "removerPorIndice 2 (remove o do meio)"
-    [receita1, despesa2]
-    (removerPorIndice 2 [receita1, despesa1, despesa2])
+lerValor :: IO Double
+lerValor = do
+  putStr "Informe o valor: "
+  entrada <- getLine
+  case readMaybe entrada :: Maybe Double of
+    Just v | v > 0 -> return v
+    _ -> do
+      putStrLn "Valor invalido, informe um numero positivo."
+      lerValor
 
-testeRemoverUltimo :: Teste
-testeRemoverUltimo =
-  testar "removerPorIndice 3 (remove o ultimo)"
-    [receita1, despesa1]
-    (removerPorIndice 3 [receita1, despesa1, despesa2])
+adicionarTransacao :: [Transacao] -> IO [Transacao]
+adicionarTransacao transacoes = do
+  cat <- lerCategoria
+  tp  <- lerTipoTransacao
+  vl  <- lerValor
+  let novaTransacao = Transacao { categoria = cat, tipo = tp, valor = vl }
+  putStrLn "Transacao adicionada com sucesso!"
+  return (novaTransacao : transacoes)
 
-testeRemoverIndiceInvalidoZero :: Teste
-testeRemoverIndiceInvalidoZero =
-  testar "removerPorIndice 0 (indice invalido, lista inalterada)"
-    [receita1, despesa1]
-    (removerPorIndice 0 [receita1, despesa1])
+removerTransacao :: [Transacao] -> IO [Transacao]
+removerTransacao [] = do
+  putStrLn "Nao ha transacoes para remover."
+  return []
+removerTransacao transacoes = do
+  listarTransacoes transacoes
+  putStr "Informe o numero da transacao a remover: "
+  entrada <- getLine
+  case readMaybe entrada :: Maybe Int of
+    Just n | n >= 1 && n <= length transacoes -> do
+      putStrLn "Transacao removida com sucesso!"
+      return (removerPorIndice n transacoes)
+    _ -> do
+      putStrLn "Indice invalido."
+      return transacoes
 
-testeRemoverIndiceForaDoIntervalo :: Teste
-testeRemoverIndiceForaDoIntervalo =
-  testar "removerPorIndice 10 (indice alem do tamanho, lista inalterada)"
-    [receita1, despesa1]
-    (removerPorIndice 10 [receita1, despesa1])
+exibirResumo :: [Transacao] -> IO ()
+exibirResumo transacoes = do
+  let resumo = calcularResumo transacoes
+  putStrLn "------ Resumo Financeiro ------"
+  putStrLn ("Total de receitas: R$ " ++ show (totalReceitas resumo))
+  putStrLn ("Total de despesas: R$ " ++ show (totalDespesas resumo))
+  putStrLn ("Saldo: R$ " ++ show (saldo resumo))
 
-testeRemoverListaVazia :: Teste
-testeRemoverListaVazia =
-  testar "removerPorIndice em lista vazia"
-    ([] :: [Transacao])
-    (removerPorIndice 1 [])
+displayInstrucoes :: IO ()
+displayInstrucoes = do
+  putStrLn "------------------------------"
+  putStrLn "1 - Listar transacoes"
+  putStrLn "2 - Adicionar transacao"
+  putStrLn "3 - Remover transacao"
+  putStrLn "4 - Gerar resumo financeiro"
+  putStrLn "5 - Sair"
+  putStrLn "------------------------------"
+  putStr "Escolha uma opcao: "
 
--- ===== Testes de formatarTransacoes (list comprehension) =====
-
-testeFormatarTransacoesVazia :: Teste
-testeFormatarTransacoesVazia =
-  testar "formatarTransacoes (lista vazia)"
-    ([] :: [String])
-    (formatarTransacoes [])
-
-testeFormatarTransacoesConteudo :: Teste
-testeFormatarTransacoesConteudo =
-  testar "formatarTransacoes (contem categoria e tipo formatados)"
-    True
-    (let linhas = formatarTransacoes [receita1]
-     in length linhas == 1
-        && "Receita" `elemStr` head linhas
-        && "Alimentacao" `elemStr` head linhas)
-  where
-    elemStr sub str = sub `isInfixOfSimples` str
-    isInfixOfSimples sub str = any (sub `prefixDe`) (caudas str)
-    caudas [] = [[]]
-    caudas s@(_:xs) = s : caudas xs
-    prefixDe [] _ = True
-    prefixDe _ [] = False
-    prefixDe (a:as) (b:bs) = a == b && prefixDe as bs
-
--- ===== Testes de todasCategorias =====
-
-testeTodasCategoriasTamanho :: Teste
-testeTodasCategoriasTamanho =
-  testar "todasCategorias tem as 8 categorias definidas"
-    8
-    (length todasCategorias)
-
-testeTodasCategoriasContemOutros :: Teste
-testeTodasCategoriasContemOutros =
-  testar "todasCategorias contem Outros"
-    True
-    (Outros `elem` todasCategorias)
-
--- ===== Execucao dos testes =====
-
-todosOsTestes :: [Teste]
-todosOsTestes =
-  [ testeTransacaoParaResumoReceita
-  , testeTransacaoParaResumoDespesa
-  , testeCalcularResumoListaVazia
-  , testeCalcularResumoMisto
-  , testeCalcularResumoApenasDespesas
-  , testeMonoidIdentidadeEsquerda
-  , testeMonoidIdentidadeDireita
-  , testeMonoidAssociatividade
-  , testeRemoverPrimeiro
-  , testeRemoverMeio
-  , testeRemoverUltimo
-  , testeRemoverIndiceInvalidoZero
-  , testeRemoverIndiceForaDoIntervalo
-  , testeRemoverListaVazia
-  , testeFormatarTransacoesVazia
-  , testeFormatarTransacoesConteudo
-  , testeTodasCategoriasTamanho
-  , testeTodasCategoriasContemOutros
-  ]
+loopSistema :: [Transacao] -> IO ()
+loopSistema transacoes = do
+  displayInstrucoes
+  opcao <- getLine
+  case opcao of
+    "1" -> do
+      listarTransacoes transacoes
+      loopSistema transacoes
+    "2" -> do
+      novasTransacoes <- adicionarTransacao transacoes
+      loopSistema novasTransacoes
+    "3" -> do
+      novasTransacoes <- removerTransacao transacoes
+      loopSistema novasTransacoes
+    "4" -> do
+      exibirResumo transacoes
+      loopSistema transacoes
+    "5" -> putStrLn "Saindo do sistema. Ate logo!"
+    _   -> do
+      putStrLn "Opcao invalida. Tente novamente."
+      loopSistema transacoes
 
 main :: IO ()
 main = do
-  putStrLn "===== Executando testes unitarios ====="
-  resultados <- mapM executarTeste todosOsTestes
-  let totalTestes = length resultados
-      totalFalhas = length (filter not resultados)
-  putStrLn "========================================"
-  putStrLn (show (totalTestes - totalFalhas) ++ "/" ++ show totalTestes ++ " testes passaram.")
-  if totalFalhas == 0
-    then exitSuccess
-    else exitFailure
-  where
-    executarTeste :: Teste -> IO Bool
-    executarTeste t = do
-      if passou t
-        then putStrLn ("[OK]   " ++ nomeTeste t)
-        else putStrLn ("[FALHOU] " ++ nomeTeste t ++ " (" ++ detalhe t ++ ")")
-      return (passou t)
+  hSetBuffering stdout NoBuffering
+  putStrLn "Sistema de Controle Financeiro"
+  loopSistema []
