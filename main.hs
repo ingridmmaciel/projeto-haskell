@@ -12,7 +12,6 @@ module Main
   ) where
 
 import Text.Read (readMaybe)
-import System.IO (hSetEncoding, stdin, stdout, utf8)
 
 data Categoria =
   Alimentacao |
@@ -40,7 +39,7 @@ data ResumoFinanceiro = ResumoFinanceiro {
   saldo         :: Double
 } deriving (Show, Eq)
 
--- Instanciação de Monoid (bônus): combinar dois resumos parciais soma os campos
+-- Instanciacao de Monoid (bonus): combinar dois resumos parciais soma os campos
 instance Semigroup ResumoFinanceiro where
   (ResumoFinanceiro r1 d1 s1) <> (ResumoFinanceiro r2 d2 s2) =
     ResumoFinanceiro (r1 + r2) (d1 + d2) (s1 + s2)
@@ -48,28 +47,28 @@ instance Semigroup ResumoFinanceiro where
 instance Monoid ResumoFinanceiro where
   mempty = ResumoFinanceiro 0 0 0
 
--- Todas as categorias possíveis (Enum/Bounded)
+-- Todas as categorias possiveis (Enum/Bounded)
 todasCategorias :: [Categoria]
 todasCategorias = [minBound .. maxBound]
 
--- Converte uma transação individual em um "resumo parcial"
+-- Converte uma transacao individual em um "resumo parcial"
 transacaoParaResumo :: Transacao -> ResumoFinanceiro
 transacaoParaResumo t = case tipo t of
   Receita -> ResumoFinanceiro (valor t) 0 (valor t)
   Despesa -> ResumoFinanceiro 0 (valor t) (negate (valor t))
 
--- Calcula o resumo financeiro combinando todas as transações via Monoid (foldMap)
+-- Calcula o resumo financeiro combinando todas as transacoes via Monoid (foldMap)
 calcularResumo :: [Transacao] -> ResumoFinanceiro
 calcularResumo = foldMap transacaoParaResumo
 
--- Formata as transações com índice (1-based) para exibição -- list comprehension
+-- Formata as transacoes com indice (1-based) para exibicao -- list comprehension
 formatarTransacoes :: [Transacao] -> [String]
 formatarTransacoes transacoes =
   [ show i ++ " - " ++ show (tipo t) ++ " | " ++ show (categoria t) ++
     " | R$ " ++ show (valor t)
   | (i, t) <- zip [1 :: Int ..] transacoes ]
 
--- Remove o elemento de índice (1-based) via recursão explícita (tail recursion)
+-- Remove o elemento de indice (1-based) via recursao explicita (tail recursion)
 removerPorIndice :: Int -> [Transacao] -> [Transacao]
 removerPorIndice _ [] = []
 removerPorIndice indice (t:ts)
@@ -85,7 +84,7 @@ imprimirLinhas (linha:resto) = do
   imprimirLinhas resto
 
 listarTransacoes :: [Transacao] -> IO ()
-listarTransacoes [] = putStrLn "Nenhuma transação cadastrada."
+listarTransacoes [] = putStrLn "Nenhuma transacao cadastrada."
 listarTransacoes transacoes = imprimirLinhas (formatarTransacoes transacoes)
 
 -- Exibe cada categoria numerada, percorrendo a lista recursivamente
@@ -97,14 +96,14 @@ exibirCategoriasNumeradas ((indice, cat):resto) = do
 
 lerCategoria :: IO Categoria
 lerCategoria = do
-  putStrLn "Categorias disponíveis:"
+  putStrLn "Categorias disponiveis:"
   exibirCategoriasNumeradas (zip [1 :: Int ..] todasCategorias)
-  putStr "Escolha o número da categoria: "
+  putStr "Escolha o numero da categoria: "
   entrada <- getLine
   case readMaybe entrada :: Maybe Int of
     Just n | n >= 1 && n <= length todasCategorias -> return (todasCategorias !! (n - 1))
     _ -> do
-      putStrLn "Opção inválida, tente novamente."
+      putStrLn "Opcao invalida, tente novamente."
       lerCategoria
 
 lerTipoTransacao :: IO TipoTransacao
@@ -117,7 +116,7 @@ lerTipoTransacao = do
     "1" -> return Receita
     "2" -> return Despesa
     _   -> do
-      putStrLn "Opção inválida, tente novamente."
+      putStrLn "Opcao invalida, tente novamente."
       lerTipoTransacao
 
 lerValor :: IO Double
@@ -127,7 +126,7 @@ lerValor = do
   case readMaybe entrada :: Maybe Double of
     Just v | v > 0 -> return v
     _ -> do
-      putStrLn "Valor inválido, informe um número positivo."
+      putStrLn "Valor invalido, informe um numero positivo."
       lerValor
 
 adicionarTransacao :: [Transacao] -> IO [Transacao]
@@ -136,23 +135,23 @@ adicionarTransacao transacoes = do
   tp  <- lerTipoTransacao
   vl  <- lerValor
   let novaTransacao = Transacao { categoria = cat, tipo = tp, valor = vl }
-  putStrLn "Transação adicionada com sucesso!"
+  putStrLn "Transacao adicionada com sucesso!"
   return (novaTransacao : transacoes)
 
 removerTransacao :: [Transacao] -> IO [Transacao]
 removerTransacao [] = do
-  putStrLn "Não há transações para remover."
+  putStrLn "Nao ha transacoes para remover."
   return []
 removerTransacao transacoes = do
   listarTransacoes transacoes
-  putStr "Informe o número da transação a remover: "
+  putStr "Informe o numero da transacao a remover: "
   entrada <- getLine
   case readMaybe entrada :: Maybe Int of
     Just n | n >= 1 && n <= length transacoes -> do
-      putStrLn "Transação removida com sucesso!"
+      putStrLn "Transacao removida com sucesso!"
       return (removerPorIndice n transacoes)
     _ -> do
-      putStrLn "Índice inválido."
+      putStrLn "Indice invalido."
       return transacoes
 
 exibirResumo :: [Transacao] -> IO ()
@@ -166,13 +165,13 @@ exibirResumo transacoes = do
 displayInstrucoes :: IO ()
 displayInstrucoes = do
   putStrLn "------------------------------"
-  putStrLn "1 - Listar transações"
-  putStrLn "2 - Adicionar transação"
-  putStrLn "3 - Remover transação"
+  putStrLn "1 - Listar transacoes"
+  putStrLn "2 - Adicionar transacao"
+  putStrLn "3 - Remover transacao"
   putStrLn "4 - Gerar resumo financeiro"
   putStrLn "5 - Sair"
   putStrLn "------------------------------"
-  putStr "Escolha uma opção: "
+  putStr "Escolha uma opcao: "
 
 loopSistema :: [Transacao] -> IO ()
 loopSistema transacoes = do
@@ -191,14 +190,12 @@ loopSistema transacoes = do
     "4" -> do
       exibirResumo transacoes
       loopSistema transacoes
-    "5" -> putStrLn "Saindo do sistema. Até logo!"
+    "5" -> putStrLn "Saindo do sistema. Ate logo!"
     _   -> do
-      putStrLn "Opção inválida. Tente novamente."
+      putStrLn "Opcao invalida. Tente novamente."
       loopSistema transacoes
 
 main :: IO ()
 main = do
-  hSetEncoding stdin utf8
-  hSetEncoding stdout utf8
   putStrLn "Sistema de Controle Financeiro"
   loopSistema []
