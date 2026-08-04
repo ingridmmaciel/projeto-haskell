@@ -12,6 +12,7 @@ module Main
   ) where
 
 import Text.Read (readMaybe)
+import System.IO (hSetBuffering, stdout, BufferMode(NoBuffering))
 
 data Categoria =
   Alimentacao |
@@ -197,5 +198,6 @@ loopSistema transacoes = do
 
 main :: IO ()
 main = do
+  hSetBuffering stdout NoBuffering
   putStrLn "Sistema de Controle Financeiro"
   loopSistema []
