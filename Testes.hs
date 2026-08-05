@@ -1,16 +1,20 @@
 module Testes (main) where
 
+import Tipos
+    ( Categoria(..)
+    , TipoTransacao(..)
+    , Transacao(..)
+    , ResumoFinanceiro(..)
+    )
+
 import Main
-  ( Categoria(..)
-  , TipoTransacao(..)
-  , Transacao(..)
-  , ResumoFinanceiro(..)
-  , todasCategorias
-  , transacaoParaResumo
-  , calcularResumo
-  , formatarTransacoes
-  , removerPorIndice
-  )
+    ( todasCategorias
+    , transacaoParaResumo
+    , calcularResumo
+    , formatarTransacoes
+    , removerPorIndice
+    )
+
 import System.Exit (exitFailure, exitSuccess)
 
 -- Estrutura simples de teste: nome do caso + resultado esperado vs obtido
