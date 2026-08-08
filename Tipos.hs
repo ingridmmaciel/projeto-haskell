@@ -23,6 +23,5 @@ data Transacao = Transacao {
 data ResumoFinanceiro = ResumoFinanceiro {
   totalReceitas :: Double,
   totalDespesas :: Double,
-  saldo         :: Double,
-  mediaDespesas :: Double
+  saldo         :: Double
 } deriving (Show, Eq)
