@@ -14,11 +14,11 @@ import Estatisticas
 
 -- Instanciacao de Monoid (bonus): combinar dois resumos parciais soma os campos
 instance Semigroup ResumoFinanceiro where
-  (ResumoFinanceiro r1 d1 s1  m1) <> (ResumoFinanceiro r2 d2 s2 m2) =
-    ResumoFinanceiro (r1 + r2) (d1 + d2) (s1 + s2) ((m1+m2)/2)
+  (ResumoFinanceiro r1 d1 s1) <> (ResumoFinanceiro r2 d2 s2) =
+    ResumoFinanceiro (r1 + r2) (d1 + d2) (s1 + s2)
 
 instance Monoid ResumoFinanceiro where
-  mempty = ResumoFinanceiro 0 0 0 0
+  mempty = ResumoFinanceiro 0 0 0
 
 -- Todas as categorias possiveis (Enum/Bounded)
 todasCategorias :: [Categoria]
@@ -27,8 +27,8 @@ todasCategorias = [minBound .. maxBound]
 -- Converte uma transacao individual em um "resumo parcial"
 transacaoParaResumo :: Transacao -> ResumoFinanceiro
 transacaoParaResumo t = case tipo t of
-  Receita -> ResumoFinanceiro (valor t) 0 (valor t) 0
-  Despesa -> ResumoFinanceiro 0 (valor t) (negate (valor t)) (valor t)
+  Receita -> ResumoFinanceiro (valor t) 0 (valor t)
+  Despesa -> ResumoFinanceiro 0 (valor t) (negate (valor t)) 
 
 -- Calcula o resumo financeiro combinando todas as transacoes via Monoid (foldMap)
 calcularResumo :: [Transacao] -> ResumoFinanceiro
@@ -129,11 +129,18 @@ removerTransacao transacoes = do
 
 exibirResumo :: [Transacao] -> IO ()
 exibirResumo transacoes = do
-  let resumo = gerarResumo transacoes
+  let resumo = calcularResumo transacoes
   putStrLn "------ Resumo Financeiro ------"
   putStrLn ("Total de receitas: R$ " ++ show (totalReceitas resumo))
   putStrLn ("Total de despesas: R$ " ++ show (totalDespesas resumo))
   putStrLn ("Saldo: R$ " ++ show (saldo resumo))
+  putStrLn ("")
+  putStrLn "------ Estatísticas ------"
+  putStrLn ("Quantidade de receitas: " ++ show (qtdReceitas transacoes))
+  putStrLn ("Quantidade de despesas: " ++ show (qtdDespesas transacoes))
+  putStrLn ("Maior receita: " ++ show (fst(maiorReceita transacoes)) ++ " | R$ " ++ show (snd(maiorReceita transacoes)))
+  putStrLn ("Maior despesa: " ++ show (fst(maiorDespesa transacoes)) ++ " | R$ " ++ show (snd(maiorDespesa transacoes)))
+  putStrLn ("Média das despesas: R$ " ++ show (calcularMediaDespesas transacoes))
 
 displayInstrucoes :: IO ()
 displayInstrucoes = do
